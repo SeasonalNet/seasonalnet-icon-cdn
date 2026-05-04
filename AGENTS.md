@@ -20,7 +20,8 @@ The service should stay boring, deterministic, and easy to operate. Avoid adding
 - Keep cache behavior deterministic. Cache entries should be keyed by render-affecting inputs such as Lucide version, icon size, icon name, and color.
 - Do not turn cache cleanup into request-path complexity. Cleanup should be best-effort and non-fatal.
 - Prefer small, dependency-light changes. New dependencies should have a direct purpose.
-- Do not commit generated cache files, `node_modules/`, secrets, or local deployment artifacts.
+- Do not commit generated cache files, `node_modules/`, secrets, local deployment artifacts, or site-specific `config.yaml` files.
+- Keep `config.example.yaml` current when configuration keys or defaults change.
 
 ## Validation commands
 

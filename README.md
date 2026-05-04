@@ -65,11 +65,12 @@ The full mapping lives in `discord_log.py` in the SeasonalWeather repo.
 ## Layout
 
 ```text
-server.js       HTTP routing and startup
-config.yaml     Runtime defaults
-lib/config.js   YAML loading, defaults, and environment overrides
-lib/render.js   Lucide SVG lookup and Sharp PNG rendering
-lib/cache.js    Disk cache paths, reads, writes, and cleanup
+server.js            HTTP routing and startup
+config.example.yaml  Example runtime configuration
+config.yaml          Local runtime configuration, gitignored
+lib/config.js        YAML loading, defaults, and environment overrides
+lib/render.js        Lucide SVG lookup and Sharp PNG rendering
+lib/cache.js         Disk cache paths, reads, writes, and cleanup
 ```
 
 ## Setup
@@ -80,6 +81,8 @@ Requires Node.js ≥ 18 and npm.
 git clone https://git.seasonalnet.org/Seasonal_Currency/seasonalnet-icon-cdn.git
 cd seasonalnet-icon-cdn
 npm install
+cp config.example.yaml config.yaml
+$EDITOR config.yaml
 npm start
 ```
 
@@ -93,8 +96,19 @@ npm run check-sharp
 
 ## Configuration
 
-The service loads `config.yaml` from the repository root by default. To use a
-different file:
+The service loads `config.yaml` from the repository root by default. That file is
+site-local and gitignored. Start from the example:
+
+```bash
+cp config.example.yaml config.yaml
+$EDITOR config.yaml
+```
+
+If `config.yaml` is absent, the service falls back to built-in defaults. For
+production, keep an explicit `config.yaml` so runtime choices are visible to the
+operator without being committed.
+
+To use a different file:
 
 ```bash
 CDN_CONFIG=/etc/seasonalnet-icon-cdn/config.yaml npm start
@@ -131,7 +145,7 @@ Environment variables can override the common runtime values:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CDN_CONFIG` | `./config.yaml` | Config file path |
+| `CDN_CONFIG` | `./config.yaml` | Local config file path |
 | `CDN_HOST` | `127.0.0.1` | Listen address |
 | `CDN_PORT` | `3600` | Listen port |
 | `CDN_SIZE` | `64` | Output PNG size in pixels |

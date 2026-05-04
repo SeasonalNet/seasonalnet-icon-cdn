@@ -7,7 +7,7 @@
     "start": "node server.js",
     "check-sharp": "node -e \"require('sharp'); console.log('sharp ok')\"",
     "check-lucide": "node -e \"const fs=require('fs'),p=require('path'); const d=p.join(__dirname,'node_modules','lucide-static','icons'); console.log('lucide-static icons:', fs.readdirSync(d).length, 'files');\"",
-    "check-config": "node -e \"const { loadConfig } = require('./lib/config'); const c = loadConfig({ appRoot: __dirname }); console.log('config ok:', c.config_path);\""
+    "check-config": "node -e \"const { loadConfig } = require('./lib/config'); const c = loadConfig({ appRoot: __dirname }); console.log('config ok:', c.config_path, c.config_exists ? '(file loaded)' : '(using built-in defaults)');\""
   },
   "dependencies": {
     "lucide-static": "^0.484.0",
