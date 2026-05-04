@@ -10,7 +10,12 @@ but usable anywhere you need a quick icon CDN.
 Request an icon by name and hex color. The service colorizes the Lucide SVG,
 rasterizes it to PNG via [sharp](https://sharp.pixelplumbing.com/), caches the
 result to disk, and returns it with long-lived cache headers. Subsequent requests
-for the same `(icon, hex)` pair are served straight from disk — no re-render.
+for the same render-affecting inputs are served straight from disk — no
+re-render.
+
+The cache path includes the Lucide version and output size, so changing the icon
+set or `render.size` does not accidentally serve stale PNGs from an older render
+configuration.
 
 ## API
 
@@ -23,7 +28,8 @@ GET /icon?icon=ICONNAME&hex=RRGGBB
 | `icon`    | Lucide icon name (e.g. `siren`, `bell-ring`, `snowflake`). See [lucide.dev/icons](https://lucide.dev/icons/) for the full list. |
 | `hex`     | 6-character hex color, no `#` (e.g. `FF0000` for red). |
 
-Returns a `image/png` with `Cache-Control: public, max-age=604800, immutable`.
+Returns an `image/png` with `Cache-Control: public, max-age=604800, immutable`
+by default.
 
 ```
 GET /health
@@ -37,7 +43,7 @@ Returns `{"status":"ok"}` — used by nginx and monitoring.
 https://cdn.seasonalnet.org/icon?icon=siren&hex=FF0000
 ```
 
-Returns a 64×64 red siren icon PNG.
+Returns a 64×64 red siren icon PNG with the default configuration.
 
 ## SeasonalWeather icon mapping
 
@@ -56,6 +62,16 @@ when posting Discord embeds. Some examples:
 
 The full mapping lives in `discord_log.py` in the SeasonalWeather repo.
 
+## Layout
+
+```text
+server.js       HTTP routing and startup
+config.yaml     Runtime defaults
+lib/config.js   YAML loading, defaults, and environment overrides
+lib/render.js   Lucide SVG lookup and Sharp PNG rendering
+lib/cache.js    Disk cache paths, reads, writes, and cleanup
+```
+
 ## Setup
 
 Requires Node.js ≥ 18 and npm.
@@ -64,15 +80,98 @@ Requires Node.js ≥ 18 and npm.
 git clone https://git.seasonalnet.org/Seasonal_Currency/seasonalnet-icon-cdn.git
 cd seasonalnet-icon-cdn
 npm install
-node server.js
+npm start
 ```
 
-Environment variables (optional):
+Validation helpers:
+
+```bash
+npm run check-config
+npm run check-lucide
+npm run check-sharp
+```
+
+## Configuration
+
+The service loads `config.yaml` from the repository root by default. To use a
+different file:
+
+```bash
+CDN_CONFIG=/etc/seasonalnet-icon-cdn/config.yaml npm start
+```
+
+Default configuration:
+
+```yaml
+server:
+  host: "127.0.0.1"
+  port: 3600
+
+render:
+  size: 64
+  icons_dir: null
+
+cache:
+  dir: "./cache"
+  namespace: "auto"
+  http_max_age_seconds: 604800
+  immutable: true
+
+  cleanup:
+    enabled: true
+    on_startup: true
+    interval_ms: 3600000
+    max_age_days: 180
+    max_files: 25000
+    max_bytes: 104857600
+    tmp_max_age_minutes: 30
+```
+
+Environment variables can override the common runtime values:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CDN_PORT` | `3600` | Port to listen on (localhost only) |
+| `CDN_CONFIG` | `./config.yaml` | Config file path |
+| `CDN_HOST` | `127.0.0.1` | Listen address |
+| `CDN_PORT` | `3600` | Listen port |
 | `CDN_SIZE` | `64` | Output PNG size in pixels |
+| `CDN_ICONS_DIR` | `node_modules/lucide-static/icons` | Lucide SVG directory override |
+| `CDN_CACHE_DIR` | `./cache` | Root disk cache directory |
+| `CDN_CACHE_NAMESPACE` | `auto` | Cache namespace; `auto` uses the Lucide package version |
+| `CDN_CACHE_HTTP_MAX_AGE_SECONDS` | `604800` | Browser/proxy max-age for icon responses |
+| `CDN_CACHE_IMMUTABLE` | `true` | Include `immutable` in cache headers |
+| `CDN_CACHE_CLEANUP_ENABLED` | `true` | Enable background cache cleanup |
+| `CDN_CACHE_CLEAN_ON_STARTUP` | `true` | Run cleanup at service startup |
+| `CDN_CACHE_CLEAN_INTERVAL_MS` | `3600000` | Cleanup interval; `0` disables scheduled cleanup |
+| `CDN_CACHE_MAX_AGE_DAYS` | `180` | Delete PNGs older than this many days; use `null` to disable |
+| `CDN_CACHE_MAX_FILES` | `25000` | Maximum cached PNG count; use `null` to disable |
+| `CDN_CACHE_MAX_BYTES` | `104857600` | Maximum cached PNG bytes; use `null` to disable |
+| `CDN_CACHE_TMP_MAX_AGE_MINUTES` | `30` | Delete abandoned `.tmp` files after this many minutes |
+
+## Cache
+
+Rendered PNGs are cached under a versioned directory. With the defaults, the
+path looks like this:
+
+```text
+cache/lucide-0.484.0/size-64/siren-FF0000.png
+```
+
+Cache cleanup is best-effort and non-fatal. It removes abandoned `.tmp` files,
+optionally removes very old PNGs, then prunes the oldest remaining PNGs if the
+cache exceeds `max_files` or `max_bytes`.
+
+This is intended as a guardrail against unbounded icon/color combinations, not
+as a complicated freshness system. Icon output is deterministic, so a cached PNG
+is safe to reuse until the render configuration changes.
+
+To clear the cache manually:
+
+```bash
+rm -rf cache/
+```
+
+The `cache/` directory is gitignored.
 
 ## Deployment
 
@@ -90,7 +189,6 @@ server {
         proxy_pass         http://127.0.0.1:3600;
         proxy_http_version 1.1;
         proxy_set_header   Host $host;
-        add_header         Cache-Control "public, max-age=604800, immutable";
     }
 
     location /health {
@@ -111,7 +209,9 @@ After=network.target
 Type=simple
 ExecStart=/usr/bin/node /opt/seasonalnet/cdn/server.js
 WorkingDirectory=/opt/seasonalnet/cdn
+Environment=CDN_CONFIG=/opt/seasonalnet/cdn/config.yaml
 Environment=CDN_PORT=3600
+Environment=CDN_CACHE_DIR=/var/cache/seasonalnet-icon-cdn
 User=www-data
 Restart=on-failure
 
@@ -119,16 +219,13 @@ Restart=on-failure
 WantedBy=multi-user.target
 ```
 
-## Cache
+For a stricter systemd sandbox, keep the app directory read-only and allow only
+the cache path to be writable:
 
-Rendered PNGs are cached under `cache/` in the working directory. The cache
-directory is created automatically on startup. To clear it:
-
-```bash
-rm -rf cache/
+```ini
+ReadOnlyPaths=/opt/seasonalnet/cdn
+ReadWritePaths=/var/cache/seasonalnet-icon-cdn
 ```
-
-The `cache/` directory is gitignored.
 
 ## License
 

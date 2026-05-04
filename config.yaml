@@ -1,0 +1,38 @@
+# SeasonalNet icon CDN configuration
+
+server:
+  host: "127.0.0.1"
+  port: 3600
+
+render:
+  # Output PNG size in pixels. Discord thumbnails currently use 64px.
+  size: 64
+
+  # Optional override for the Lucide SVG source directory.
+  # Leave null to use node_modules/lucide-static/icons.
+  icons_dir: null
+
+cache:
+  # Production can override this with /var/cache/seasonalnet-icon-cdn.
+  dir: "./cache"
+
+  # "auto" derives a namespace from the installed lucide-static package version.
+  # Render-affecting values are also included in the cache path.
+  namespace: "auto"
+
+  http_max_age_seconds: 604800
+  immutable: true
+
+  cleanup:
+    enabled: true
+    on_startup: true
+    interval_ms: 3600000
+
+    # These are guardrails against unbounded color/icon combinations, not a
+    # freshness policy. Set max_age_days to null to disable age pruning.
+    max_age_days: 180
+    max_files: 25000
+    max_bytes: 104857600
+
+    # Remove abandoned atomic-write temp files after this age.
+    tmp_max_age_minutes: 30
