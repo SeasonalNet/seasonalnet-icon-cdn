@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  node:
+    runs-on: node20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            corepack enable
+            yarn install --frozen-lockfile
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "No package manifest found."
+          fi
+      - name: Run package checks
+        run: |
+          node <<'NODE'
+          const { execSync } = require('node:child_process');
+          const fs = require('node:fs');
+          const scripts = fs.existsSync('package.json') ? (require('./package.json').scripts || {}) : {};
+          const requested = ['check-config', 'check-lucide', 'check-sharp'];
+          let ran = false;
+          for (const name of requested) {
+            if (scripts[name]) {
+              console.log(`==> npm run ${name}`);
+              execSync(`npm run ${name}`, { stdio: 'inherit' });
+              ran = true;
+            }
+          }
+          if (!ran) {
+            console.log('No configured package check scripts found; running JavaScript syntax check.');
+            execSync("find . -path './node_modules' -prune -o -path './dist' -prune -o -path './build' -prune -o -name '*.js' -print0 | xargs -0 -r -n 1 node --check", { stdio: 'inherit', shell: '/bin/bash' });
+          }
+          NODE
