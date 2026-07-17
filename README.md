@@ -144,7 +144,7 @@ cache:
 Environment variables can override the common runtime values:
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+|---|---|---|
 | `CDN_CONFIG` | `./config.yaml` | Local config file path |
 | `CDN_HOST` | `127.0.0.1` | Listen address |
 | `CDN_PORT` | `3600` | Listen port |
@@ -243,4 +243,4 @@ ReadWritePaths=/var/cache/seasonalnet-icon-cdn
 
 ## License
 
-MIT
+AGPL v3.0
