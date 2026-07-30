@@ -7,41 +7,95 @@ on:
 
 jobs:
   node:
-    runs-on: node20
+    runs-on: node24
+
     steps:
-      - uses: actions/checkout@v6
-      - name: Install dependencies
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Enable pnpm
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          elif [ -f pnpm-lock.yaml ]; then
-            corepack enable
-            pnpm install --frozen-lockfile
-          elif [ -f yarn.lock ]; then
-            corepack enable
-            yarn install --frozen-lockfile
-          elif [ -f package.json ]; then
-            npm install
-          else
-            echo "No package manifest found."
-          fi
-      - name: Run package checks
+          corepack enable
+          node --version
+          pnpm --version
+
+      - name: Verify package metadata
         run: |
           node <<'NODE'
-          const { execSync } = require('node:child_process');
-          const fs = require('node:fs');
-          const scripts = fs.existsSync('package.json') ? (require('./package.json').scripts || {}) : {};
-          const requested = ['check-config', 'check-lucide', 'check-sharp'];
-          let ran = false;
-          for (const name of requested) {
-            if (scripts[name]) {
-              console.log(`==> npm run ${name}`);
-              execSync(`npm run ${name}`, { stdio: 'inherit' });
-              ran = true;
-            }
+          const pkg = require("./package.json");
+
+          if (pkg.packageManager !== "pnpm@11.17.0") {
+            throw new Error(
+              `expected packageManager pnpm@11.17.0, got ${pkg.packageManager}`
+            );
           }
-          if (!ran) {
-            console.log('No configured package check scripts found; running JavaScript syntax check.');
-            execSync("find . -path './node_modules' -prune -o -path './dist' -prune -o -path './build' -prune -o -name '*.js' -print0 | xargs -0 -r -n 1 node --check", { stdio: 'inherit', shell: '/bin/bash' });
-          }
+
+          console.log("package manager:", pkg.packageManager);
           NODE
+
+          test -f pnpm-lock.yaml
+          test -f pnpm-workspace.yaml
+          test ! -e package-lock.json
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify dependency policy
+        run: |
+          pnpm ignored-builds
+          pnpm peers check
+          pnpm list --depth 0
+
+      - name: Run package checks
+        run: |
+          pnpm check-config
+          pnpm check-lucide
+          pnpm check-sharp
+
+      - name: Exercise Sharp image pipeline
+        run: |
+          node <<'NODE'
+          const sharp = require("sharp");
+
+          (async () => {
+            const { data, info } = await sharp({
+              create: {
+                width: 2,
+                height: 2,
+                channels: 4,
+                background: {
+                  r: 0,
+                  g: 0,
+                  b: 0,
+                  alpha: 0,
+                },
+              },
+            })
+              .png()
+              .toBuffer({ resolveWithObject: true });
+
+            if (
+              info.format !== "png" ||
+              info.width !== 2 ||
+              info.height !== 2 ||
+              data.length === 0
+            ) {
+              throw new Error("Sharp PNG smoke test produced invalid output");
+            }
+
+            console.log(
+              `sharp PNG smoke test: ${info.width}x${info.height}, ${data.length} bytes`
+            );
+          })().catch((error) => {
+            console.error(error);
+            process.exitCode = 1;
+          });
+          NODE
+
+      - name: Check JavaScript syntax
+        run: |
+          find . \
+            -path './node_modules' -prune \
+            -o -path './.git' -prune \
+            -o -type f -name '*.js' -print0 |
+            xargs -0 -r -n1 node --check

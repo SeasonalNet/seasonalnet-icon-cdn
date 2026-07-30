@@ -75,23 +75,23 @@ lib/cache.js         Disk cache paths, reads, writes, and cleanup
 
 ## Setup
 
-Requires Node.js ≥ 18 and npm.
+Requires Node.js ≥ 18 and pnpm 11.
 
 ```bash
 git clone https://git.seasonalnet.org/Seasonal_Currency/seasonalnet-icon-cdn.git
 cd seasonalnet-icon-cdn
-npm install
+pnpm install
 cp config.example.yaml config.yaml
 $EDITOR config.yaml
-npm start
+pnpm start
 ```
 
 Validation helpers:
 
 ```bash
-npm run check-config
-npm run check-lucide
-npm run check-sharp
+pnpm check-config
+pnpm check-lucide
+pnpm check-sharp
 ```
 
 ## Configuration
@@ -111,7 +111,7 @@ operator without being committed.
 To use a different file:
 
 ```bash
-CDN_CONFIG=/etc/seasonalnet-icon-cdn/config.yaml npm start
+CDN_CONFIG=/etc/seasonalnet-icon-cdn/config.yaml pnpm start
 ```
 
 Default configuration:

@@ -28,10 +28,10 @@ The service should stay boring, deterministic, and easy to operate. Avoid adding
 Run these before committing changes when the environment has dependencies installed:
 
 ```bash
-npm install
-npm run check-config
-npm run check-lucide
-npm run check-sharp
+pnpm install
+pnpm check-config
+pnpm check-lucide
+pnpm check-sharp
 node --check server.js
 node --check lib/config.js
 node --check lib/render.js
@@ -41,7 +41,7 @@ node --check lib/cache.js
 For a quick runtime smoke test:
 
 ```bash
-npm start
+pnpm start
 curl -f http://127.0.0.1:3600/health
 curl -f 'http://127.0.0.1:3600/icon?icon=siren&hex=FF0000' -o /tmp/siren.png
 ```

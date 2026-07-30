@@ -1,6 +1,7 @@
 {
   "name": "seasonalnet-icon-cdn",
   "version": "1.0.0",
+  "packageManager": "pnpm@11.17.0",
   "description": "Lucide icon CDN for SeasonalWeather Discord embeds",
   "main": "server.js",
   "scripts": {
