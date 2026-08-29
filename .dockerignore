@@ -1,0 +1,9 @@
+.git
+node_modules
+cache
+config.yaml
+*.log
+*.tmp
+.env*
+README.md
+AGENTS.md
