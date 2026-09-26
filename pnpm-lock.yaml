@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       lucide-static:
-        specifier: ^0.484.0
-        version: 0.484.0
+        specifier: ^0.577.0
+        version: 0.577.0
       sharp:
         specifier: ^0.35.0
         version: 0.35.4
@@ -189,8 +189,8 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
-  lucide-static@0.484.0:
-    resolution: {integrity: sha512-MxKXzVPVsIJflJ0rBxkRkzhSPqpH0HBV5841rHKCsHorINV5MmGAwWvMNldi0CsbF1anuaa8OnSKII5E+b+QmQ==}
+  lucide-static@0.577.0:
+    resolution: {integrity: sha512-hx39J5Tq4JWF2ALY+5YRg+SxQLpeAmLJDXNcqiBJH/UuVwp43it9fyki/onZO7AVFgG5ZbB+fWwZR9mwGHE2XQ==}
 
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
@@ -329,7 +329,7 @@ snapshots:
 
   detect-libc@2.1.2: {}
 
-  lucide-static@0.484.0: {}
+  lucide-static@0.577.0: {}
 
   semver@7.8.5: {}
 
