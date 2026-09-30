@@ -24,7 +24,7 @@ Keep the service deterministic and easy to operate. Avoid databases, queues, Red
 
 ## Validation
 
-For bare-metal development, install Go 1.27.1+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js, pnpm 11.17.0, and Python 3 with venv support. `make ci` additionally requires Docker with Buildx. Then use the shared Make targets:
+For bare-metal development, install Go 1.27.1+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js, pnpm 11.17.0, and uv 0.12.20. `make ci` additionally requires Docker with Buildx. Then use the shared Make targets:
 
 ```bash
 make check

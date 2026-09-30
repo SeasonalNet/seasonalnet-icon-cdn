@@ -3,6 +3,7 @@ SHELL := /bin/sh
 
 GO ?= go
 PNPM ?= pnpm
+UV ?= uv
 GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 GOVULNCHECK ?= $(GO) run golang.org/x/vuln/cmd/govulncheck@v1.8.0
 BINARY ?= bin/icon-cdn
@@ -86,10 +87,7 @@ vuln-only:
 	$(GOVULNCHECK) -show verbose ./...
 
 openapi-check: ## Validate the OpenAPI 3.2 contract against its specification
-	@venv="$$(mktemp -d)"; trap 'rm -rf "$$venv"' EXIT HUP INT TERM; \
-	python3 -m venv "$$venv"; \
-	"$$venv/bin/python" -m pip install --disable-pip-version-check --quiet -r requirements-ci.txt; \
-	"$$venv/bin/python" -m openapi_spec_validator openapi.yaml
+	$(UV) run --locked --group ci python -m openapi_spec_validator openapi.yaml
 
 quality-checks: ## Run formatting, lint, vet, unit, race, coverage, vulnerability, API, and asset checks
 	$(MAKE) fmt-check

@@ -43,12 +43,19 @@ jobs:
           test ! -e package-lock.json
           test -f go.mod
           test -f go.sum
-          test -f requirements-ci.txt
+          test -f pyproject.toml
+          test -f uv.lock
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: 0.12.20
+          enable-cache: false
 
       - name: Install libvips development files
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libvips-dev pkg-config python3-venv
+          apt-get update
+          apt-get install --yes --no-install-recommends libvips-dev pkg-config
 
       - name: Run shared quality, dependency, and build gates
         run: make ci
