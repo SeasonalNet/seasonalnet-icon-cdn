@@ -7,7 +7,7 @@ on:
 
 jobs:
   go:
-    runs-on: node24
+    runs-on: [docker, slate-builder]
 
     steps:
       - name: Check out repository
@@ -55,7 +55,7 @@ jobs:
       - name: Install libvips development files
         run: |
           apt-get update
-          apt-get install --yes --no-install-recommends libvips-dev pkg-config
+          apt-get install --yes --no-install-recommends docker.io docker-buildx libvips-dev pkg-config
 
       - name: Run shared quality, dependency, and build gates
         run: make ci
