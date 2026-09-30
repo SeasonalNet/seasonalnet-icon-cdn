@@ -1,5 +1,7 @@
 .git
 node_modules
+bin
+internal/cdn/assets/lucide
 cache
 config.yaml
 *.log

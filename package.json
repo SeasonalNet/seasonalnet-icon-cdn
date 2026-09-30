@@ -1,22 +1,14 @@
 {
-  "name": "seasonalnet-icon-cdn",
+  "name": "seasonalnet-icon-cdn-assets",
   "version": "1.0.0",
+  "private": true,
   "packageManager": "pnpm@11.17.0",
-  "description": "Lucide icon CDN for SeasonalWeather Discord embeds",
-  "main": "server.js",
+  "description": "Pinned Lucide source assets for the Go icon CDN",
   "scripts": {
-    "start": "node server.js",
-    "check-sharp": "node -e \"require('sharp'); console.log('sharp ok')\"",
-    "check-lucide": "node -e \"const fs=require('fs'),p=require('path'); const d=p.join(__dirname,'node_modules','lucide-static','icons'); console.log('lucide-static icons:', fs.readdirSync(d).length, 'files');\"",
-    "check-config": "node -e \"const { loadConfig } = require('./lib/config'); const c = loadConfig({ appRoot: __dirname }); console.log('config ok:', c.config_path, c.config_exists ? '(file loaded)' : '(using built-in defaults)');\""
+    "sync-icons": "node tools/sync-icons.js",
+    "check-lucide": "node tools/sync-icons.js --check"
   },
-  "dependencies": {
-    "lucide-static": "^1.48.0",
-    "sharp": "^0.35.5",
-    "yaml": "^2.9.1"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "license": "ISC"
+  "devDependencies": {
+    "lucide-static": "1.48.0"
+  }
 }

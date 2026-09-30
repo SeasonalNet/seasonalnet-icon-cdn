@@ -1,0 +1,2 @@
+# CI-only OpenAPI 3.2 document validator; not part of the service runtime.
+openapi-spec-validator==0.9.0

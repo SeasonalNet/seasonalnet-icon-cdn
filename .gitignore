@@ -1,4 +1,6 @@
 node_modules/
+internal/cdn/assets/lucide/
 cache/
+bin/
 *.png
 config.yaml

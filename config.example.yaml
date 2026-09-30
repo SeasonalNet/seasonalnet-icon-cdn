@@ -9,7 +9,7 @@ render:
   size: 64
 
   # Optional override for the Lucide SVG source directory.
-  # Leave null to use node_modules/lucide-static/icons.
+  # Leave null to use the pinned assets embedded at build time.
   icons_dir: null
 
 cache:

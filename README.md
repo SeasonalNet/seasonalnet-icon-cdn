@@ -1,120 +1,81 @@
 # seasonalnet-icon-cdn
 
-A tiny Node.js HTTP service that renders [Lucide](https://lucide.dev) icons as
-colored PNGs on demand. Built for use as Discord embed thumbnails in
-[SeasonalWeather](https://git.seasonalnet.org/Seasonal_Currency/SeasonalWeather),
-but usable anywhere you need a quick icon CDN.
-
-## How it works
-
-Request an icon by name and hex color. The service colorizes the Lucide SVG,
-rasterizes it to PNG via [sharp](https://sharp.pixelplumbing.com/), caches the
-result to disk, and returns it with long-lived cache headers. Subsequent requests
-for the same render-affecting inputs are served straight from disk — no
-re-render.
-
-The cache path includes the Lucide version and output size, so changing the icon
-set or `render.size` does not accidentally serve stale PNGs from an older render
-configuration.
+A small Go HTTP service that renders Lucide icons for Discord embeds and other clients.
 
 ## API
 
-```
-GET /icon?icon=ICONNAME&hex=RRGGBB
-```
+### Render an icon
 
-| Parameter | Description |
-|-----------|-------------|
-| `icon`    | Lucide icon name (e.g. `siren`, `bell-ring`, `snowflake`). See [lucide.dev/icons](https://lucide.dev/icons/) for the full list. |
-| `hex`     | 6-character hex color, no `#` (e.g. `FF0000` for red). |
-
-Returns an `image/png` with `Cache-Control: public, max-age=604800, immutable`
-by default.
-
-```
-GET /health
+```http
+GET /icon?icon=siren&hex=FF0000
 ```
 
-Returns `{"status":"ok"}` — used by nginx and monitoring.
+The default response is a 64×64 PNG with `Cache-Control: public, max-age=604800, immutable`. `hex` is six hexadecimal digits; an optional leading `#` is accepted. If omitted or empty, the color defaults to white.
 
-### Example
-
-```
-https://cdn.seasonalnet.org/icon?icon=siren&hex=FF0000
-```
-
-Returns a 64×64 red siren icon PNG with the default configuration.
-
-## SeasonalWeather icon mapping
-
-SeasonalWeather maps EAS event codes to Lucide icons and NWS hazard-map colors
-when posting Discord embeds. Some examples:
-
-| Event | Icon | Color |
-|-------|------|-------|
-| TOR — Tornado Warning | `siren` | `#FF0000` |
-| SVR — Severe Thunderstorm Warning | `cloud-lightning` | `#FF8C00` |
-| FFW — Flash Flood Warning | `waves` | `#8B0000` |
-| WSW — Winter Storm Warning | `snowflake` | `#FF69B4` |
-| HUW — Hurricane Warning | `wind` | `#DC143C` |
-| RWT — Required Weekly Test | `radio` | `#C0C0C0` |
-| Errors | `circle-alert` | `#E24B4A` |
-
-The full mapping lives in `discord_log.py` in the SeasonalWeather repo.
-
-## Layout
+Optional render variants:
 
 ```text
-server.js            HTTP routing and startup
-config.example.yaml  Example runtime configuration
-config.yaml          Local runtime configuration, gitignored
-lib/config.js        YAML loading, defaults, and environment overrides
-lib/render.js        Lucide SVG lookup and Sharp PNG rendering
-lib/cache.js         Disk cache paths, reads, writes, and cleanup
+/icon?icon=siren&hex=FF0000&size=128&format=png
+/icon?icon=siren&hex=FF0000&format=svg
 ```
 
-## Setup
+Explicit sizes are bounded to `16`, `24`, `32`, `48`, `64`, `96`, and `128`. Omitting `size` uses `CDN_SIZE` or `render.size`. Formats are `png` (default) and `svg`. Cache entries vary by Lucide version, size, icon, color, and format.
 
-Requires Node.js ≥ 18 and pnpm 11.
+Successful responses include an `ETag`, `X-Cache` (`HIT`, `MISS`, or `COALESCED`), and cache headers. `HEAD` returns the same headers as `GET` without an image body. `If-None-Match` returns `304 Not Modified` when the representation matches.
+
+### Other endpoints
+
+| Endpoint | Response |
+|---|---|
+| `GET /health` | `{"status":"ok"}` liveness check; preserved for existing probes. |
+| `GET /ready` | Readiness status. |
+| `GET /icons` | Sorted icon names and the embedded Lucide version. |
+| `GET /metrics` | Prometheus text metrics for requests, cache behavior, renders, and errors. |
+
+Errors use `application/problem+json` following RFC 9457. The `code` extension is stable for client handling; `detail` is explanatory text. The API description is in [openapi.yaml](openapi.yaml) and targets OpenAPI 3.2.1.
+
+Example invalid-input response:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Invalid hex color",
+  "status": 400,
+  "detail": "Expected six hexadecimal characters, with an optional leading #.",
+  "code": "invalid_hex_color"
+}
+```
+
+## Rendering compatibility
+
+The Node and Go implementations both use libvips for SVG rasterization and PNG encoding. The Go service uses govips and requires libvips 8.14 or newer, pkg-config, and a C compiler. The container pins Ubuntu Resolute and libvips 8.18.0 in both build and runtime stages. A full comparison of all 2,118 embedded icons at all seven supported sizes found identical decoded RGBA pixels to the original Sharp/libvips 8.18.7 pipeline. PNG files are not byte-identical because the encoder metadata and compressed stream differ.
+
+## Build and run
+
+Requirements for bare-metal development: Go 1.27.1+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js, pnpm 11.17.0, and Python 3 with venv support for OpenAPI validation. `make ci` also requires Docker with Buildx. The Docker build installs the pinned libvips build and runtime packages in its own stages.
 
 ```bash
-git clone https://git.seasonalnet.org/Seasonal_Currency/seasonalnet-icon-cdn.git
-cd seasonalnet-icon-cdn
-pnpm install
-cp config.example.yaml config.yaml
-$EDITOR config.yaml
-pnpm start
+make dev
 ```
 
-Validation helpers:
+`make dev` installs the pinned asset tooling, syncs Lucide files, and runs the service. The generated `internal/cdn/assets/lucide/` directory is ignored by Git; `go:embed` includes those files in the built binary. Common manual operations:
 
 ```bash
-pnpm check-config
-pnpm check-lucide
-pnpm check-sharp
+make setup          # install pnpm dependencies and sync Lucide files
+make build          # build bin/icon-cdn
+make check          # run formatting, lint, vet, tests, race, coverage, vulnerability, and API checks
+make ci             # quality gates, container HTTP smoke checks, dependency policy, and build
+make container      # build the local Docker image
+make container-check # build the image and smoke-test its HTTP endpoints
+make openapi-check  # validate openapi.yaml against OpenAPI 3.2
+make vuln           # scan Go code for reachable known vulnerabilities
 ```
+
+The Dockerfile performs the asset sync and Go build in separate stages. It installs the pinned libvips development package only in the build stage and the matching runtime package in the final Ubuntu image; Node and the compiler are absent from the runtime image.
 
 ## Configuration
 
-The service loads `config.yaml` from the repository root by default. That file is
-site-local and gitignored. Start from the example:
-
-```bash
-cp config.example.yaml config.yaml
-$EDITOR config.yaml
-```
-
-If `config.yaml` is absent, the service falls back to built-in defaults. For
-production, keep an explicit `config.yaml` so runtime choices are visible to the
-operator without being committed.
-
-To use a different file:
-
-```bash
-CDN_CONFIG=/etc/seasonalnet-icon-cdn/config.yaml pnpm start
-```
-
-Default configuration:
+The service reads `config.yaml` from its working directory by default. Set `CDN_CONFIG` to use another file. Missing configuration falls back to these defaults:
 
 ```yaml
 server:
@@ -130,7 +91,6 @@ cache:
   namespace: "auto"
   http_max_age_seconds: 604800
   immutable: true
-
   cleanup:
     enabled: true
     on_startup: true
@@ -141,78 +101,40 @@ cache:
     tmp_max_age_minutes: 30
 ```
 
-Environment variables can override the common runtime values:
+Environment overrides:
 
 | Variable | Default | Description |
-|---|---|---|
-| `CDN_CONFIG` | `./config.yaml` | Local config file path |
-| `CDN_HOST` | `127.0.0.1` | Listen address |
-| `CDN_PORT` | `3600` | Listen port |
-| `CDN_SIZE` | `64` | Output PNG size in pixels |
-| `CDN_ICONS_DIR` | `node_modules/lucide-static/icons` | Lucide SVG directory override |
-| `CDN_CACHE_DIR` | `./cache` | Root disk cache directory |
-| `CDN_CACHE_NAMESPACE` | `auto` | Cache namespace; `auto` uses the Lucide package version |
-| `CDN_CACHE_HTTP_MAX_AGE_SECONDS` | `604800` | Browser/proxy max-age for icon responses |
-| `CDN_CACHE_IMMUTABLE` | `true` | Include `immutable` in cache headers |
-| `CDN_CACHE_CLEANUP_ENABLED` | `true` | Enable background cache cleanup |
-| `CDN_CACHE_CLEAN_ON_STARTUP` | `true` | Run cleanup at service startup |
-| `CDN_CACHE_CLEAN_INTERVAL_MS` | `3600000` | Cleanup interval; `0` disables scheduled cleanup |
-| `CDN_CACHE_MAX_AGE_DAYS` | `180` | Delete PNGs older than this many days; use `null` to disable |
-| `CDN_CACHE_MAX_FILES` | `25000` | Maximum cached PNG count; use `null` to disable |
-| `CDN_CACHE_MAX_BYTES` | `104857600` | Maximum cached PNG bytes; use `null` to disable |
-| `CDN_CACHE_TMP_MAX_AGE_MINUTES` | `30` | Delete abandoned `.tmp` files after this many minutes |
+|---|---:|---|
+| `CDN_CONFIG` | `./config.yaml` | Configuration path; relative paths use the working directory. |
+| `CDN_HOST` | `127.0.0.1` | Listen address. |
+| `CDN_PORT` | `3600` | Listen port. |
+| `CDN_SIZE` | `64` | Default rendered size. |
+| `CDN_ICONS_DIR` | embedded assets | Optional external SVG directory. |
+| `CDN_CACHE_DIR` | `./cache` | Cache root. |
+| `CDN_CACHE_NAMESPACE` | `auto` | Cache namespace; `auto` uses the embedded Lucide version. |
+| `CDN_CACHE_HTTP_MAX_AGE_SECONDS` | `604800` | HTTP max-age for rendered icons. |
+| `CDN_CACHE_IMMUTABLE` | `true` | Include `immutable` in image cache headers. |
+| `CDN_CACHE_CLEANUP_ENABLED` | `true` | Enable cache cleanup. |
+| `CDN_CACHE_CLEAN_ON_STARTUP` | `true` | Run best-effort cleanup at startup. |
+| `CDN_CACHE_CLEAN_INTERVAL_MS` | `3600000` | Cleanup interval; `0` disables the timer. |
+| `CDN_CACHE_MAX_AGE_DAYS` | `180` | Delete older PNG entries; `null` disables age pruning. |
+| `CDN_CACHE_MAX_FILES` | `25000` | Maximum number of cached PNGs; `null` disables this limit. |
+| `CDN_CACHE_MAX_BYTES` | `104857600` | Maximum PNG cache bytes; `null` disables this limit. |
+| `CDN_CACHE_TMP_MAX_AGE_MINUTES` | `30` | Remove older abandoned atomic-write temp files. |
 
-## Cache
-
-Rendered PNGs are cached under a versioned directory. With the defaults, the
-path looks like this:
+Cache entries are stored under a versioned directory, for example:
 
 ```text
-cache/lucide-0.484.0/size-64/siren-FF0000.png
+cache/lucide-1.48.0/size-64/siren-FF0000.png
 ```
 
-Cache cleanup is best-effort and non-fatal. It removes abandoned `.tmp` files,
-optionally removes very old PNGs, then prunes the oldest remaining PNGs if the
-cache exceeds `max_files` or `max_bytes`.
-
-This is intended as a guardrail against unbounded icon/color combinations, not
-as a complicated freshness system. Icon output is deterministic, so a cached PNG
-is safe to reuse until the render configuration changes.
-
-To clear the cache manually:
-
-```bash
-rm -rf cache/
-```
-
-The `cache/` directory is gitignored.
+Cleanup removes stale PNGs and old `.tmp` files, then prunes the oldest remaining PNGs if count or byte limits are exceeded. It is best-effort and never prevents a rendered response from being served.
 
 ## Deployment
 
-The service is designed to run behind nginx as a reverse proxy, with Cloudflare
-in front for edge caching. A sample nginx server block:
+The service is intended to run behind nginx with Cloudflare edge caching. The container listens on port `3600`, runs as UID/GID `10001`, and uses `/var/cache/seasonalnet-icon-cdn` for its writable cache. Mount the site-local config at `/run/config/seasonalnet-icon-cdn.yaml` and persist the cache path.
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name cdn.yourdomain.org;
-    ssl_certificate     /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location /icon {
-        proxy_pass         http://127.0.0.1:3600;
-        proxy_http_version 1.1;
-        proxy_set_header   Host $host;
-    }
-
-    location /health {
-        proxy_pass http://127.0.0.1:3600;
-        access_log off;
-    }
-}
-```
-
-A sample systemd unit:
+Example systemd unit:
 
 ```ini
 [Unit]
@@ -221,26 +143,26 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/node /opt/seasonalnet/cdn/server.js
-WorkingDirectory=/opt/seasonalnet/cdn
-Environment=CDN_CONFIG=/opt/seasonalnet/cdn/config.yaml
+ExecStart=/opt/seasonalnet/icon-cdn
+WorkingDirectory=/opt/seasonalnet
+Environment=CDN_CONFIG=/etc/seasonalnet-icon-cdn/config.yaml
 Environment=CDN_PORT=3600
 Environment=CDN_CACHE_DIR=/var/cache/seasonalnet-icon-cdn
 User=www-data
 Restart=on-failure
+ReadOnlyPaths=/opt/seasonalnet
+ReadWritePaths=/var/cache/seasonalnet-icon-cdn
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-For a stricter systemd sandbox, keep the app directory read-only and allow only
-the cache path to be writable:
+## Quality baseline
 
-```ini
-ReadOnlyPaths=/opt/seasonalnet/cdn
-ReadWritePaths=/var/cache/seasonalnet-icon-cdn
-```
+`make check` and `make ci` share the Go formatting, golangci-lint, vet, unit, race, coverage, Go vulnerability, OpenAPI specification, and Lucide asset checks. They also run a suppression finder that rejects Go `nolint`/ignore directives, skipped tests, disabled or excluded golangci-lint rules, and CI commands that skip or ignore Go quality checks. Its own fixtures are tested as part of the gate. The `internal/cdn` package must maintain at least 90% statement coverage; the current unit suite is above that threshold. CI also checks pinned pnpm dependencies, JavaScript syntax, and the built container's health, metadata, metrics, PNG, SVG, caching, and problem responses. `COVERAGE_MIN` can be raised for local experiments, but the Makefile rejects values below the checked-in baseline.
+
+Focused targets are available for iteration: `make test`, `make test-race`, `make coverage`, `make lint`, `make vet`, `make vuln`, `make openapi-check`, `make fmt`, `make anti-quality`, `make test-anti-quality`, `make check-lucide`, and `make container-check`. `make build` creates the ignored `bin/icon-cdn` executable. API failure behavior is covered by tests for invalid paths and parameters, unsupported methods, missing icons, malformed SVGs, cache read/write failures, conditional requests, and service recovery after an individual render failure.
 
 ## License
 
-AGPL v3.0
+`seasonalnet-icon-cdn` is licensed under the GNU AGPLv3 license. See [LICENSE](./LICENSE).

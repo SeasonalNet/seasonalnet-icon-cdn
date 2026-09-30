@@ -1,0 +1,213 @@
+openapi: 3.2.1
+info:
+  title: SeasonalNet Icon CDN API
+  version: 2.0.0
+  description: >-
+    Renders pinned Lucide icons as cached PNG or SVG images. Errors use RFC 9457
+    Problem Details with a stable code extension.
+servers:
+  - url: https://cdn.seasonalnet.org
+paths:
+  /icon:
+    get:
+      operationId: getIcon
+      summary: Render an icon
+      parameters:
+        - $ref: '#/components/parameters/Icon'
+        - $ref: '#/components/parameters/Hex'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Format'
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+          description: ETag validator for conditional requests.
+      responses:
+        '200':
+          description: Rendered icon.
+          headers:
+            Cache-Control:
+              schema: { type: string }
+            ETag:
+              schema: { type: string }
+            X-Cache:
+              schema:
+                type: string
+                enum: [HIT, MISS, COALESCED]
+          content:
+            image/png:
+              schema: {}
+            image/svg+xml:
+              schema: {}
+        '304':
+          description: The cached representation matches If-None-Match.
+          headers:
+            ETag:
+              schema: { type: string }
+            Cache-Control:
+              schema: { type: string }
+        '400':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '405':
+          $ref: '#/components/responses/Problem'
+        '500':
+          $ref: '#/components/responses/Problem'
+    head:
+      operationId: headIcon
+      summary: Get icon response headers without a body
+      parameters:
+        - $ref: '#/components/parameters/Icon'
+        - $ref: '#/components/parameters/Hex'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Format'
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Headers for the rendered icon.
+          headers:
+            Cache-Control: { schema: { type: string } }
+            ETag: { schema: { type: string } }
+            Content-Length: { schema: { type: integer, minimum: 0 } }
+            X-Cache:
+              schema: { type: string, enum: [HIT, MISS, COALESCED] }
+        '304':
+          description: The cached representation matches If-None-Match.
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '405': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        '200':
+          description: The process is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { const: ok }
+                additionalProperties: false
+        '405': { $ref: '#/components/responses/Problem' }
+  /ready:
+    get:
+      operationId: getReadiness
+      summary: Readiness check
+      responses:
+        '200':
+          description: The embedded icon set and cache are initialized.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { const: ready }
+                additionalProperties: false
+        '503': { $ref: '#/components/responses/Problem' }
+        '405': { $ref: '#/components/responses/Problem' }
+  /icons:
+    get:
+      operationId: listIcons
+      summary: List available icons
+      responses:
+        '200':
+          description: Sorted icon names from the pinned Lucide asset set.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lucide_version, icons]
+                properties:
+                  lucide_version: { type: string }
+                  icons:
+                    type: array
+                    items: { type: string, pattern: '^[a-z0-9-]+$' }
+                additionalProperties: false
+        '405': { $ref: '#/components/responses/Problem' }
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Prometheus text metrics
+      responses:
+        '200':
+          description: Request, cache, render, and error counters.
+          content:
+            text/plain:
+              schema: { type: string }
+        '405': { $ref: '#/components/responses/Problem' }
+components:
+  parameters:
+    Icon:
+      name: icon
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+        pattern: '^[a-z0-9-]+$'
+      example: siren
+    Hex:
+      name: hex
+      in: query
+      required: false
+      schema:
+        type: string
+        pattern: '^#?[0-9a-fA-F]{6}$'
+        default: FFFFFF
+      example: FF0000
+    Size:
+      name: size
+      in: query
+      required: false
+      description: Bounded output size. Omit to use CDN_SIZE or render.size.
+      schema:
+        type: integer
+        enum: [16, 24, 32, 48, 64, 96, 128]
+    Format:
+      name: format
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [png, svg]
+        default: png
+  responses:
+    Problem:
+      description: RFC 9457 problem details.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string }
+        code:
+          type: string
+          enum:
+            - invalid_icon_name
+            - invalid_hex_color
+            - invalid_format
+            - invalid_size
+            - icon_not_found
+            - method_not_allowed
+            - not_found
+            - render_failed
+            - not_ready
+      additionalProperties: true
