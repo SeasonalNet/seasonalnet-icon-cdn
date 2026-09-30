@@ -11,9 +11,9 @@
     "check-config": "node -e \"const { loadConfig } = require('./lib/config'); const c = loadConfig({ appRoot: __dirname }); console.log('config ok:', c.config_path, c.config_exists ? '(file loaded)' : '(using built-in defaults)');\""
   },
   "dependencies": {
-    "lucide-static": "^0.577.0",
-    "sharp": "^0.35.0",
-    "yaml": "^2.7.0"
+    "lucide-static": "^1.48.0",
+    "sharp": "^0.35.5",
+    "yaml": "^2.9.1"
   },
   "engines": {
     "node": ">=18.0.0"
