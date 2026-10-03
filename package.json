@@ -9,6 +9,6 @@
     "check-lucide": "node tools/sync-icons.js --check"
   },
   "devDependencies": {
-    "lucide-static": "1.48.0"
+    "lucide-static": "1.49.0"
   }
 }
