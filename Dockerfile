@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS lucide-assets
+FROM node:22-bookworm-slim@sha256:1b3abbc0bf2421c8733f58c6fd7bbb961a960f37e05ed7369eccd1fbb0edcc84 AS lucide-assets
 
 ENV COREPACK_HOME=/tmp/corepack
 WORKDIR /build
