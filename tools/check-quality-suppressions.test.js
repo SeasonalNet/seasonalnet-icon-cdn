@@ -116,6 +116,17 @@ test("automation that weakens Go or golangci-lint checks is reported", (t) => {
   assert.ok(result.findings.some((finding) => finding.rule === "Make recipe ignores a quality command failure"));
 });
 
+test("additional Dockerfiles receive the automation suppression checks", (t) => {
+  const root = withFixture(t, {
+    "Dockerfile.vuln": "RUN go test ./... || true\n",
+  });
+  const result = findViolations(root);
+  assert.equal(result.inspectedAutomationFiles, 1);
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].file, "Dockerfile.vuln");
+  assert.equal(result.findings[0].rule, "quality command failure can be swallowed by shell handling");
+});
+
 test("CI steps configured to continue after quality failures are reported", (t) => {
   const root = withFixture(t, {
     ".forgejo/workflows/ci.yml": "steps:\n  - run: make ci\n    continue-on-error: true\n",

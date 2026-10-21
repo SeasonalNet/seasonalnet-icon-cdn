@@ -24,7 +24,7 @@ Keep the service deterministic and easy to operate. Avoid databases, queues, Red
 
 ## Validation
 
-For bare-metal development, install Go 1.27.1+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js, pnpm 11.17.0, and uv 0.12.20. `make ci` additionally requires Docker with Buildx. Then use the shared Make targets:
+For bare-metal development, install Go 1.27.3+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js, pnpm 11.17.0, and uv 0.12.20. `make ci` additionally requires Docker with Buildx. Then use the shared Make targets:
 
 ```bash
 make check
@@ -35,6 +35,8 @@ make ci
 `make check` enforces at least 90% statement coverage for `internal/cdn`, runs the race detector, anti-suppression finder, Go vulnerability scan, and OpenAPI 3.2 validator, and checks `gofmt`, `golangci-lint`, `go vet`, and the pinned Lucide asset set. Do not add suppressions or lower the coverage threshold to make a failing check pass.
 
 `make ci` builds and starts the production container, then checks `/health`, `/ready`, `/icons`, `/metrics`, PNG and SVG icon requests, conditional ETags, and problem responses over HTTP. Run `make container-check` to execute this integration gate directly.
+
+`make vuln-container` uses `Dockerfile.vuln` to scan the current Go source without host Go or libvips dependencies. It runs the pinned scanner against the live vulnerability database on every invocation.
 
 ## Deployment notes
 

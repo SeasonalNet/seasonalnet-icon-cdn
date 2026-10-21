@@ -52,7 +52,7 @@ The Node and Go implementations both use libvips for SVG rasterization and PNG e
 
 ## Build and run
 
-Requirements for bare-metal development: Go 1.27.1+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js, pnpm 11.17.0, and uv 0.12.20 for locked OpenAPI validation. `make ci` also requires Docker with Buildx. The Docker build installs the pinned libvips build and runtime packages in its own stages.
+Requirements for bare-metal development: Go 1.27.3+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js, pnpm 11.17.0, and uv 0.12.20 for locked OpenAPI validation. `make ci` also requires Docker with Buildx. The Docker build installs the pinned libvips build and runtime packages in its own stages.
 
 ```bash
 make dev
@@ -69,9 +69,17 @@ make container      # build the local Docker image
 make container-check # build the image and smoke-test its HTTP endpoints
 make openapi-check  # validate openapi.yaml against OpenAPI 3.2
 make vuln           # scan Go code for reachable known vulnerabilities
+make vuln-container # run the Go vulnerability scan with only Docker and Buildx installed
 ```
 
 The Dockerfile performs the asset sync and Go build in separate stages. It installs the pinned libvips development package only in the build stage and the matching runtime package in the final Ubuntu image; Node and the compiler are absent from the runtime image.
+
+`Dockerfile.vuln` provides a separate Go vulnerability scanner with the same pinned Go toolchain, libvips development package, and Lucide assets. `make vuln-container` builds it and runs `govulncheck` against the current source and module versions. Each run fetches the current Go vulnerability database and exits unsuccessfully when reachable vulnerabilities are found. It requires network access. To run it directly:
+
+```bash
+docker buildx build --load -f Dockerfile.vuln -t seasonalnet-icon-cdn:vuln .
+docker run --rm seasonalnet-icon-cdn:vuln
+```
 
 ## Configuration
 

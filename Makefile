@@ -10,10 +10,11 @@ BINARY ?= bin/icon-cdn
 COVERAGE_MIN ?= 90
 override COVERAGE_BASELINE := 90
 IMAGE ?= seasonalnet-icon-cdn:local
+VULN_IMAGE ?= seasonalnet-icon-cdn:vuln
 
 .DEFAULT_GOAL := help
 .PHONY: help setup sync-icons check-lucide fmt fmt-check lint vet test test-only test-race coverage \
-	lint-only vet-only test-race-only coverage-only vuln vuln-only openapi-check quality-checks quality check manual-check ci \
+	lint-only vet-only test-race-only coverage-only vuln vuln-only vuln-container openapi-check quality-checks quality check manual-check ci \
 	build build-only manual-build dev package-check check-js anti-quality test-anti-quality container container-check
 
 help: ## List common development and quality targets
@@ -85,6 +86,10 @@ vuln: ## Scan reachable Go dependencies for known vulnerabilities
 
 vuln-only:
 	$(GOVULNCHECK) -show verbose ./...
+
+vuln-container: ## Scan Go code using Docker without host Go or libvips dependencies
+	docker buildx build --load --file Dockerfile.vuln --tag "$(VULN_IMAGE)" .
+	docker run --rm "$(VULN_IMAGE)"
 
 openapi-check: ## Validate the OpenAPI 3.2 contract against its specification
 	$(UV) run --locked --group ci python -m openapi_spec_validator openapi.yaml

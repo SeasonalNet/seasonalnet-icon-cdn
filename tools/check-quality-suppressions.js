@@ -90,7 +90,7 @@ function isAutomationFile(relativePath) {
   return (
     name === "Makefile" ||
     name === "package.json" ||
-    name === "Dockerfile" ||
+    name === "Dockerfile" || name.startsWith("Dockerfile.") ||
     /\.(?:sh|bash)$/i.test(name) ||
     relativePath.startsWith(".forgejo/workflows/") ||
     relativePath.startsWith(".github/workflows/")
