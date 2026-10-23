@@ -115,6 +115,8 @@ jobs:
           apt-get install --yes --no-install-recommends docker-ce-cli docker-buildx-plugin
           docker version
           docker buildx version
+      - name: Trust the SeasonalNet Harbor CA
+        run: update-ca-certificates
       - name: Log in to Harbor
         env:
           HARBOR_CI_USERNAME: ${{ secrets.HARBOR_CI_USERNAME }}
