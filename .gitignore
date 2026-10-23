@@ -5,3 +5,6 @@ cache/
 bin/
 *.png
 config.yaml
+
+# Container validation tooling
+tools/container/__pycache__/

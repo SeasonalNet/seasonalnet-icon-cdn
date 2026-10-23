@@ -155,11 +155,13 @@ container: ## Build the local multi-stage container image
 	docker buildx build --load --tag "$(IMAGE)" .
 
 container-check: container ## Build and exercise the runtime image over HTTP
+	$(UV) run --locked --group ci python -m unittest discover -s tools/container -p 'test_*.py'
+	$(UV) run --locked --group ci python tools/container/check-image.py "$(IMAGE)"
 	@set -eu; \
 	name="seasonalnet-icon-cdn-smoke-$$$$"; \
 	smoke_host="$${CDN_SMOKE_DOCKER_HOST:-$$(node -e 'const endpoint = process.env.DOCKER_HOST; process.stdout.write(endpoint?.startsWith("tcp://") ? new URL(endpoint).hostname : "127.0.0.1")')}"; \
 	cleanup() { status=$$?; if [ "$$status" -ne 0 ]; then docker logs "$$name" >&2 || true; fi; docker rm --force "$$name" >/dev/null 2>&1 || true; exit "$$status"; }; \
 	trap cleanup EXIT HUP INT TERM; \
-	docker run --detach --rm --name "$$name" --publish 0.0.0.0::3600 "$(IMAGE)" >/dev/null; \
+	docker run --detach --rm --init --read-only --cap-drop=ALL --security-opt=no-new-privileges:true --tmpfs /tmp:rw,noexec,nosuid,nodev --tmpfs /var/cache/seasonalnet-icon-cdn:rw,noexec,nosuid,nodev,uid=10001,gid=10001 --name "$$name" --publish 0.0.0.0::3600 "$(IMAGE)" >/dev/null; \
 	port="$$(docker port "$$name" 3600/tcp | sed -n '1s/.*://p')"; \
 	CDN_SMOKE_BASE_URL="http://$$smoke_host:$$port" node tools/container-smoke.js

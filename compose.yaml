@@ -1,0 +1,26 @@
+services:
+  seasonalnet-icon-cdn:
+    build: .
+    image: seasonalnet-icon-cdn:local
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+    ports:
+      - "127.0.0.1:${PUBLISH_PORT:-3600}:3600"
+    volumes:
+      - type: bind
+        source: ${CONFIG_FILE:-./config.yaml}
+        target: /run/config/seasonalnet-icon-cdn.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - data:/var/cache/seasonalnet-icon-cdn
+
+volumes:
+  data:

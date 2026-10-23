@@ -174,3 +174,8 @@ Focused targets are available for iteration: `make test`, `make test-race`, `mak
 ## License
 
 `seasonalnet-icon-cdn` is licensed under the GNU AGPLv3 license. See [LICENSE](./LICENSE).
+
+## Hardened containers
+
+See [CONTAINER_SECURITY.md](CONTAINER_SECURITY.md) for the hardened Compose
+launch, writable paths, and deployment requirements.

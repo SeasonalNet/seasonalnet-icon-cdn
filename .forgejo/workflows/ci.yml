@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
 
 jobs:
@@ -84,3 +85,53 @@ jobs:
 
       - name: Run shared quality, dependency, and build gates
         run: make ci
+
+  publish-container:
+    name: Publish container images
+    needs: [go]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: [docker, slate-builder]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install Docker CLI and Buildx
+        run: |
+          apt-get update
+          apt-get install --yes --no-install-recommends ca-certificates curl
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+          chmod a+r /etc/apt/keyrings/docker.asc
+          . /etc/os-release
+          test "$ID" = debian
+          printf '%s\n' \
+            "Types: deb" \
+            "URIs: https://download.docker.com/linux/debian" \
+            "Suites: $VERSION_CODENAME" \
+            "Components: stable" \
+            "Architectures: $(dpkg --print-architecture)" \
+            "Signed-By: /etc/apt/keyrings/docker.asc" \
+            > /etc/apt/sources.list.d/docker.sources
+          apt-get update
+          apt-get install --yes --no-install-recommends docker-ce-cli docker-buildx-plugin
+          docker version
+          docker buildx version
+      - name: Log in to Harbor
+        env:
+          HARBOR_CI_USERNAME: ${{ secrets.HARBOR_CI_USERNAME }}
+          HARBOR_CI_PASSWORD: ${{ secrets.HARBOR_CI_PASSWORD }}
+        run: printf '%s' "$HARBOR_CI_PASSWORD" | docker login registry.lan.seasonalnet.org --username "$HARBOR_CI_USERNAME" --password-stdin
+      - name: Build and push images
+        shell: bash
+        run: |
+          set -euo pipefail
+          publish() {
+            local image="$1" dockerfile="$2" context="$3"
+            local tags=(--tag "$image:sha-${GITHUB_SHA:0:12}")
+            if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+              tags+=(--tag "$image:latest")
+            elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              tags+=(--tag "$image:$GITHUB_REF_NAME" --tag "$image:latest")
+            fi
+            docker buildx build --push "${tags[@]}" --file "$dockerfile" "$context"
+          }
+          publish "registry.lan.seasonalnet.org/seasonalnet/seasonalnet-icon-cdn" "Dockerfile" "."

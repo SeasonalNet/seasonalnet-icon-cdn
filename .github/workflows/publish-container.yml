@@ -1,0 +1,40 @@
+name: Publish container images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish-container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Log in to GHCR
+        run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push images
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY%/*}"
+          repository="${GITHUB_REPOSITORY#*/}"
+          owner="$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')"
+          repository="$(printf '%s' "$repository" | tr '[:upper:]' '[:lower:]')"
+          publish() {
+            local image="$1" dockerfile="$2" context="$3"
+            local tags=(--tag "$image:sha-${GITHUB_SHA:0:12}")
+            if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+              tags+=(--tag "$image:latest")
+            elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              tags+=(--tag "$image:$GITHUB_REF_NAME" --tag "$image:latest")
+            fi
+            docker buildx build --push "${tags[@]}" --file "$dockerfile" "$context"
+          }
+          publish "ghcr.io/$owner/seasonalnet-icon-cdn" "Dockerfile" "."
