@@ -9,14 +9,14 @@ importers:
   .:
     devDependencies:
       lucide-static:
-        specifier: 1.52.0
-        version: 1.52.0
+        specifier: 1.61.0
+        version: 1.61.0
 
 packages:
 
-  lucide-static@1.52.0:
-    resolution: {integrity: sha512-0zZYihAze4ZmUCcyNa9OkWYqn/Y5f9AdTh02AZIxMtP5ravcTTfoSIAnUPBH6ZvKxt+ZW28JB0ldzLRyD82fcw==}
+  lucide-static@1.61.0:
+    resolution: {integrity: sha512-yLAiQB3MWUJEstsEDAwenSA3m7vr1tdLvgnC16Q/XMxRRma0DWwMs8M2bWlvgShrIs1m2mWMJ+0AiahqQO4GrA==}
 
 snapshots:
 
-  lucide-static@1.52.0: {}
+  lucide-static@1.61.0: {}
