@@ -1,9 +1,9 @@
-FROM node:22-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS lucide-assets
+FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS lucide-assets
 
 ENV COREPACK_HOME=/tmp/corepack
 WORKDIR /build
 
-RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
+RUN corepack enable && corepack prepare pnpm@12.15.0 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY tools ./tools
@@ -28,9 +28,13 @@ COPY internal ./internal
 COPY openapi.yaml ./openapi.yaml
 COPY --from=lucide-assets /build/internal/cdn/assets/lucide ./internal/cdn/assets/lucide
 
+ARG APP_VERSION=0.0.0+unknown
+ARG APP_REVISION=unknown
+ENV APP_VERSION=${APP_VERSION} APP_REVISION=${APP_REVISION}
+
 RUN go test ./... \
     && go vet ./... \
-    && CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o /out/icon-cdn ./cmd/icon-cdn \
+    && CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X main.softwareVersion=${APP_VERSION} -X main.softwareRevision=${APP_REVISION}" -o /out/icon-cdn ./cmd/icon-cdn \
     && mkdir -p /var/cache/seasonalnet-icon-cdn \
     && chown -R 10001:10001 /var/cache/seasonalnet-icon-cdn
 
@@ -52,6 +56,12 @@ COPY tools/container/assemble-rootfs.py /tmp/assemble-rootfs.py
 RUN python3 /tmp/assemble-rootfs.py vips /runtime-root
 
 FROM scratch AS runtime
+
+ARG APP_VERSION=0.0.0+unknown
+ARG APP_REVISION=unknown
+ENV APP_VERSION=${APP_VERSION} APP_REVISION=${APP_REVISION}
+LABEL org.opencontainers.image.version="${APP_VERSION}" org.opencontainers.image.revision="${APP_REVISION}"
+
 COPY --from=runtime-files /runtime-root /
 COPY --from=build --chown=0:0 /out/icon-cdn /usr/local/bin/icon-cdn
 ENV CDN_CONFIG=/run/config/seasonalnet-icon-cdn.yaml CDN_HOST=0.0.0.0 CDN_PORT=3600 CDN_CACHE_DIR=/var/cache/seasonalnet-icon-cdn

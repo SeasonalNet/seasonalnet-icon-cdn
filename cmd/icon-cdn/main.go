@@ -17,7 +17,14 @@ import (
 	"git.seasonalnet.org/SeasonalNet/seasonalnet-icon-cdn/internal/cdn"
 )
 
+var softwareVersion = "0.0.0+unknown"
+var softwareRevision = "unknown"
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "version") {
+		fmt.Println(versionText())
+		return
+	}
 	if len(os.Args) > 1 {
 		if os.Args[1] == "healthcheck" {
 			runHealthcheck()
@@ -80,6 +87,10 @@ func main() {
 			_ = server.Close()
 		}
 	}
+}
+
+func versionText() string {
+	return fmt.Sprintf("seasonalnet-icon-cdn %s (commit %s)", softwareVersion, softwareRevision)
 }
 
 func runHealthcheck() {

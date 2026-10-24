@@ -90,3 +90,12 @@ func TestProcessEnvironment(t *testing.T) {
 		t.Fatalf("environment value = %q", got["ICON_CDN_TEST_VALUE"])
 	}
 }
+
+func TestReleaseVersionIdentity(t *testing.T) {
+	previousVersion, previousRevision := softwareVersion, softwareRevision
+	t.Cleanup(func() { softwareVersion, softwareRevision = previousVersion, previousRevision })
+	softwareVersion, softwareRevision = "2.3.4-rc.1+build.7", "abcdef123456"
+	if got := versionText(); got != "seasonalnet-icon-cdn 2.3.4-rc.1+build.7 (commit abcdef123456)" {
+		t.Fatalf("incorrect build identity: %s", got)
+	}
+}

@@ -2,7 +2,7 @@
   "name": "seasonalnet-icon-cdn-assets",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@11.17.0",
+  "packageManager": "pnpm@12.15.0",
   "description": "Pinned Lucide source assets for the Go icon CDN",
   "scripts": {
     "sync-icons": "node tools/sync-icons.js",

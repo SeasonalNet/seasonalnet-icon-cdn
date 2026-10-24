@@ -6,6 +6,9 @@ PNPM ?= pnpm
 UV ?= uv
 GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 GOVULNCHECK ?= $(GO) run golang.org/x/vuln/cmd/govulncheck@v1.8.0
+APP_VERSION ?= $(shell sh tools/version.sh)
+APP_REVISION ?= $(shell sh tools/version.sh --revision)
+VERSION_FLAGS := -X main.softwareVersion=$(APP_VERSION) -X main.softwareRevision=$(APP_REVISION)
 BINARY ?= bin/icon-cdn
 COVERAGE_MIN ?= 90
 override COVERAGE_BASELINE := 90
@@ -121,13 +124,13 @@ build: ## Prepare assets and build the Go executable
 
 build-only: ## Build the Go executable with existing generated assets
 	mkdir -p "$(dir $(BINARY))"
-	$(GO) build -trimpath -o "$(BINARY)" ./cmd/icon-cdn
+	$(GO) build -trimpath -ldflags "$(VERSION_FLAGS)" -o "$(BINARY)" ./cmd/icon-cdn
 
 manual-build: build ## Run the manual asset sync and executable build sequence
 
 dev: ## Prepare assets and run the service from source
 	$(MAKE) setup
-	$(GO) run ./cmd/icon-cdn
+	$(GO) run -ldflags "$(VERSION_FLAGS)" ./cmd/icon-cdn
 
 package-check: ## Check pnpm policy and direct dependency state
 	$(PNPM) ignored-builds
@@ -152,7 +155,7 @@ ci: ## Run quality, dependency, OpenAPI, vulnerability, build, and container smo
 	$(MAKE) check-js
 
 container: ## Build the local multi-stage container image
-	docker buildx build --load --tag "$(IMAGE)" .
+	docker buildx build --load --build-arg "APP_VERSION=$(APP_VERSION)" --build-arg "APP_REVISION=$(APP_REVISION)" --tag "$(IMAGE)" .
 
 container-check: container ## Build and exercise the runtime image over HTTP
 	$(UV) run --locked --group ci python -m unittest discover -s tools/container -p 'test_*.py'

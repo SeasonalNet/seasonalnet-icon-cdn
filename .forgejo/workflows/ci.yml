@@ -7,7 +7,46 @@ on:
   pull_request:
 
 jobs:
+  version:
+    name: Resolve and validate software version
+    runs-on: docker
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      revision: ${{ steps.metadata.outputs.revision }}
+      timestamp: ${{ steps.metadata.outputs.timestamp }}
+      image_tag: ${{ steps.metadata.outputs.image_tag }}
+      stable: ${{ steps.metadata.outputs.stable }}
+    steps:
+      - name: Check out complete Git history and tags
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Test Git version resolution
+        run: sh tools/test-version.sh
+      - name: Resolve build identity and validate release tags
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="$(sh tools/version.sh --release "$GITHUB_REF_NAME")"
+            image_tag="$(sh tools/version.sh --image-tag "$GITHUB_REF_NAME")"
+            stable="$(sh tools/version.sh --stable "$GITHUB_REF_NAME")"
+          else
+            version="$(sh tools/version.sh)"
+            image_tag=""
+            stable=false
+          fi
+          printf 'version=%s\nrevision=%s\ntimestamp=%s\nimage_tag=%s\nstable=%s\n' \
+            "$version" "$(sh tools/version.sh --revision)" "$(sh tools/version.sh --timestamp)" \
+            "$image_tag" "$stable" >> "$GITHUB_OUTPUT"
+
   go:
+    env:
+      APP_VERSION: ${{ needs.version.outputs.version }}
+      APP_REVISION: ${{ needs.version.outputs.revision }}
+      APP_BUILD_DATE: ${{ needs.version.outputs.timestamp }}
+    needs: [version]
     runs-on: [docker, slate-builder]
 
     steps:
@@ -35,9 +74,9 @@ jobs:
           node <<'NODE'
           const pkg = require("./package.json");
 
-          if (pkg.packageManager !== "pnpm@11.17.0") {
+          if (pkg.packageManager !== "pnpm@12.15.0") {
             throw new Error(
-              `expected packageManager pnpm@11.17.0, got ${pkg.packageManager}`
+              `expected packageManager pnpm@12.15.0, got ${pkg.packageManager}`
             );
           }
 
@@ -57,6 +96,8 @@ jobs:
         with:
           version: 0.13.5
           enable-cache: false
+      - name: Install stable Python
+        run: uv python install 3.15.1
 
       - name: Install Docker CLI, Buildx, and libvips development files
         run: |
@@ -87,9 +128,15 @@ jobs:
         run: make ci
 
   publish-container:
+    env:
+      APP_VERSION: ${{ needs.version.outputs.version }}
+      APP_REVISION: ${{ needs.version.outputs.revision }}
+      APP_BUILD_DATE: ${{ needs.version.outputs.timestamp }}
+      IMAGE_TAG: ${{ needs.version.outputs.image_tag }}
+      IMAGE_STABLE: ${{ needs.version.outputs.stable }}
     name: Publish container images
-    needs: [go]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    needs: [go, version]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: [docker, slate-builder]
     steps:
       - name: Check out repository
@@ -132,8 +179,9 @@ jobs:
             if [[ "$GITHUB_REF" == refs/heads/main ]]; then
               tags+=(--tag "$image:latest")
             elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-              tags+=(--tag "$image:$GITHUB_REF_NAME" --tag "$image:latest")
+              tags+=(--tag "$image:$IMAGE_TAG")
+              if [[ "$IMAGE_STABLE" == true ]]; then tags+=(--tag "$image:latest"); fi
             fi
-            docker buildx build --push "${tags[@]}" --file "$dockerfile" "$context"
+            sh tools/build-image.sh --push "${tags[@]}" --file "$dockerfile" "$context"
           }
           publish "registry.lan.seasonalnet.org/seasonalnet/seasonalnet-icon-cdn" "Dockerfile" "."
