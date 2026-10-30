@@ -11,7 +11,7 @@ RUN pnpm sync-icons
 
 FROM golang:1.27.3-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9 AS go-toolchain
 
-FROM ubuntu:resolute@sha256:19fcd1bf268f02b60aca3bd30bd8a6d9a11759a430e32921833e65f16d87348a AS build
+FROM ubuntu:resolute@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c AS build
 
 COPY --from=go-toolchain /usr/local/go /usr/local/go
 ENV PATH="/usr/local/go/bin:${PATH}"
@@ -38,7 +38,7 @@ RUN go test ./... \
     && mkdir -p /var/cache/seasonalnet-icon-cdn \
     && chown -R 10001:10001 /var/cache/seasonalnet-icon-cdn
 
-FROM ubuntu:resolute@sha256:19fcd1bf268f02b60aca3bd30bd8a6d9a11759a430e32921833e65f16d87348a AS runtime-files
+FROM ubuntu:resolute@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c AS runtime-files
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates libvips42t64=8.18.0-1build1 python3-minimal \
