@@ -58,14 +58,14 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Set up Node.js and pnpm
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          install: false
 
-      - name: Verify Node.js and pnpm
+      - name: Install and verify pnpm
         run: |
+          npm install --global "$(node -p 'require("./package.json").packageManager')"
           node --version
           pnpm --version
           test "$(node --version)" = "v$(cat .nvmrc)"
