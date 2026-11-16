@@ -61,7 +61,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: 26
 
       - name: Enable pnpm
         run: |
@@ -74,9 +74,9 @@ jobs:
           node <<'NODE'
           const pkg = require("./package.json");
 
-          if (pkg.packageManager !== "pnpm@12.15.0") {
+          if (pkg.packageManager !== "pnpm@12.21.0") {
             throw new Error(
-              `expected packageManager pnpm@12.15.0, got ${pkg.packageManager}`
+              `expected packageManager pnpm@12.21.0, got ${pkg.packageManager}`
             );
           }
 
@@ -94,10 +94,10 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          version: 0.13.5
+          version: 0.13.8
           enable-cache: false
       - name: Install stable Python
-        run: uv python install 3.15.1
+        run: uv python install 3.15.2
 
       - name: Install Docker CLI, Buildx, and libvips development files
         run: |

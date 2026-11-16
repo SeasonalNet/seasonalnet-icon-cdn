@@ -1,9 +1,9 @@
-FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS lucide-assets
+FROM node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS lucide-assets
 
-ENV COREPACK_HOME=/tmp/corepack
 WORKDIR /build
 
-RUN corepack enable && corepack prepare pnpm@12.15.0 --activate
+RUN npm install --global pnpm@12.21.0 \
+    && test "$(pnpm --version)" = "12.21.0"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY tools ./tools

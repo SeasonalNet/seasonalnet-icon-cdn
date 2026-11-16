@@ -52,7 +52,7 @@ The Node and Go implementations both use libvips for SVG rasterization and PNG e
 
 ## Build and run
 
-Requirements for bare-metal development: Go 1.27.3+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js 24 LTS, pnpm 12.15.0, and uv 0.13.5 with Python 3.15.1 for locked OpenAPI validation. `make ci` also requires Docker with Buildx. The Docker build installs the pinned libvips build and runtime packages in its own stages.
+Requirements for bare-metal development: Go 1.27.4+, libvips 8.14+ development files, pkg-config, a C compiler, Node.js 26 LTS, pnpm 12.21.0, and uv 0.13.8 with Python 3.15.2 for locked OpenAPI validation. `make ci` also requires Docker with Buildx. The Docker build installs the pinned libvips build and runtime packages in its own stages.
 
 ```bash
 make dev
